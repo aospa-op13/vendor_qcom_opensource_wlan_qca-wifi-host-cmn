@@ -7191,14 +7191,15 @@ more_data:
 						      tx_desc_pool, tx_desc,
 						      buffer_src,
 						      comp_index, 1);
+
+			if (qdf_unlikely(!tx_desc->pdev))
+				dp_tx_dump_tx_desc(tx_desc);
+
 			soc->arch_ops.dp_tx_process_htt_completion(
 							soc,
 							tx_desc,
 							htt_tx_status,
 							ring_id);
-			if (qdf_unlikely(!tx_desc->pdev)) {
-				dp_tx_dump_tx_desc(tx_desc);
-			}
 		} else {
 			tx_desc->tx_status =
 				hal_tx_comp_get_tx_status(tx_comp_hal_desc);
@@ -7254,6 +7255,15 @@ more_data:
 						 tx_desc->flags, tx_desc->id);
 				qdf_assert_always(0);
 			}
+
+			if (qdf_unlikely(tx_desc->flags &
+			    DP_TX_DESC_FLAG_REAPED)) {
+				dp_tx_comp_alert("Txdesc duplicate entry, flags = %x,id = %d",
+						 tx_desc->flags, tx_desc->id);
+				qdf_assert_always(0);
+			}
+
+			tx_desc->flags |= DP_TX_DESC_FLAG_REAPED;
 
 			/* Collect hw completion contents */
 			hal_tx_comp_desc_sync_wrapper(tx_comp_hal_desc,
